@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角比拉霸街機</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #2f3640, #191d24);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .app-container {
+            background: #22252c;
+            border: 4px solid #444;
+            border-radius: 20px;
+            padding: 25px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            text-align: center;
+            color: #fff;
+        }
+        h1 {
+            color: #fbc531;
+            margin-top: 0;
+            font-size: 26px;
+            text-shadow: 0 0 10px rgba(251, 197, 49, 0.5);
+        }
+        .score-board {
+            display: flex;
+            justify-content: space-around;
+            background: #1e2229;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border: 1px solid #333;
+        }
+        /* ✨ Combo 連擊特效樣式 ✨ */
+        .combo-box {
+            color: #ff9f43;
+            transition: all 0.1s;
+        }
+        .combo-active {
+            transform: scale(1.3);
+            color: #ff4757;
+            text-shadow: 0 0 10px #ff4757;
+            animation: pulse 0.5s infinite alternate;
+        }
+        @keyframes pulse {
+            from { transform: scale(1.1); }
+            to { transform: scale(1.25); }
+        }
+
+        /* ⏱️ 計時器進度條樣式 */
+        .timer-container {
+            width: 100%;
+            background-color: #3d424d;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            border: 1px solid #555;
+        }
+        .timer-bar {
+            width: 100%;
+            height: 12px;
+            background-color: #4cd137;
+            transition: width 0.1s linear, background-color 0.5s;
+        }
+
+        /* 拉霸機外殼 */
+        .slot-machine {
+            background: #111;
+            border: 6px solid #fbc531;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-around;
+            padding: 20px 10px;
+            margin-bottom: 25px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,1);
+        }
+        /* 轉輪欄位 */
+        .reel {
+            background: #fff;
+            width: 43%;
+            height: 90px;
+            border-radius: 8px;
+            font-size: 34px;
+            font-weight: bold;
+            line-height: 90px;
+            color: #222;
+            overflow: hidden;
+            border: 3px solid #333;
+        }
+        /* 按鈕樣式 */
+        .btn-spin {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #cf2131;
+            transition: all 0.1s;
+            width: 100%;
+            margin-bottom: 25px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .btn-spin:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #cf2131;
+        }
+        .btn-spin:disabled {
+            background: #57606f;
+            box-shadow: 0 6px 0 #2f3542;
+            color: #a4b0be;
+            cursor: not-allowed;
+        }
+        /* 答案區塊 */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .btn-option {
+            background: #353b48;
+            color: #fff;
+            border: 2px solid #718093;
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 85px; 
+            box-shadow: 0 4px 0 #2f3542;
+        }
+        .btn-option:hover:not(:disabled) {
+            background: #475266;
+        }
+        .btn-option:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #2f3542;
+        }
+        .btn-option:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        /* 課本直式分數排版 */
+        .frac {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            line-height: 1.1;
+        }
+        .frac .num {
+            border-bottom: 2px solid #fff;
+            padding: 0 6px 4px 6px;
+            display: flex;
+            align-items: center;
+        }
+        .frac .den {
+            padding: 4px 6px 0 6px;
+        }
+
+        /* 根號蓋屋頂的排版 */
+        .sqrt {
+            display: inline-flex;
+            align-items: top;
+            position: relative;
+            padding-top: 2px;
+        }
+        .sqrt .roof {
+            border-top: 2px solid #fff;
+            padding-top: 2px;
+            line-height: 1;
+            margin-left: 1px;
+        }
+
+        /* 答題回饋效果 */
+        .correct {
+            background: #2ed573 !important;
+            color: white !important;
+            border-color: #26af5f !important;
+            box-shadow: 0 4px 0 #26af5f !important;
+        }
+        .wrong {
+            background: #ff4757 !important;
+            color: white !important;
+            border-color: #cf2131 !important;
+            box-shadow: 0 4px 0 #cf2131 !important;
+        }
+        .btn-option.correct-hint {
+            border: 3px solid #2ed573 !important;
+            box-shadow: 0 0 12px rgba(46, 213, 115, 0.8);
+        }
+        .feedback {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 15px;
+            min-height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        /* 🏆 最佳紀錄面板 */
+        .best-board {
+            display: flex;
+            justify-content: space-around;
+            background: #1e2229;
+            padding: 8px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #a4b0be;
+            border: 1px solid #333;
+        }
+        .best-board .label {
+            color: #fbc531;
+            font-weight: bold;
+        }
+
+        /* 🎚️ 難度切換器 */
+        .difficulty-selector {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .diff-btn {
+            flex: 1;
+            background: #353b48;
+            color: #a4b0be;
+            border: 2px solid #4a5266;
+            border-radius: 10px;
+            padding: 8px 4px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .diff-btn:hover {
+            background: #475266;
+            color: #fff;
+        }
+        .diff-btn.active {
+            background: linear-gradient(135deg, #ff9f43, #fbc531);
+            color: #fff;
+            border-color: #fbc531;
+            box-shadow: 0 0 10px rgba(251, 197, 49, 0.5);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .diff-btn .diff-emoji {
+            font-size: 18px;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* 🌟 金光邊框效果（容器外殼） */
+        .app-container.glow-3 {
+            box-shadow: 0 0 20px rgba(255, 159, 67, 0.6), 0 15px 35px rgba(0,0,0,0.6);
+            border-color: #ff9f43;
+        }
+        .app-container.glow-5 {
+            box-shadow: 0 0 30px rgba(251, 197, 49, 0.8), 0 15px 35px rgba(0,0,0,0.6);
+            border-color: #fbc531;
+            animation: goldPulse 1s infinite alternate;
+        }
+        .app-container.glow-10 {
+            box-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 80px rgba(255, 215, 0, 0.6), 0 15px 35px rgba(0,0,0,0.6);
+            border-color: #ffd700;
+            animation: jackpotPulse 0.4s infinite alternate;
+        }
+        @keyframes goldPulse {
+            from { box-shadow: 0 0 20px rgba(251, 197, 49, 0.6), 0 15px 35px rgba(0,0,0,0.6); }
+            to   { box-shadow: 0 0 40px rgba(251, 197, 49, 1), 0 15px 35px rgba(0,0,0,0.6); }
+        }
+        @keyframes jackpotPulse {
+            from { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.4), 0 15px 35px rgba(0,0,0,0.6); }
+            to   { box-shadow: 0 0 60px rgba(255, 215, 0, 1), 0 0 120px rgba(255, 215, 0, 0.8), 0 15px 35px rgba(0,0,0,0.6); }
+        }
+
+        /* 🎊 里程碑橫幅 */
+        .milestone-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #ff9f43, #fbc531, #ff6b6b);
+            color: #fff;
+            padding: 30px 50px;
+            border-radius: 20px;
+            font-size: 42px;
+            font-weight: bold;
+            text-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.9);
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            text-align: center;
+            border: 4px solid #fff;
+        }
+        .milestone-banner.show {
+            animation: bannerPop 1.5s ease-out forwards;
+        }
+        .milestone-banner .sub {
+            display: block;
+            font-size: 22px;
+            margin-top: 8px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+        }
+        @keyframes bannerPop {
+            0%   { transform: translate(-50%, -50%) scale(0) rotate(-15deg); opacity: 0; }
+            15%  { transform: translate(-50%, -50%) scale(1.2) rotate(5deg); opacity: 1; }
+            30%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+            80%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.5) rotate(0deg); opacity: 0; }
+        }
+
+        /* 🪙 金幣灑落動畫 */
+        .coin {
+            position: fixed;
+            top: -40px;
+            width: 28px;
+            height: 28px;
+            background: radial-gradient(circle at 30% 30%, #fff5b8, #ffd700 50%, #b8860b);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            z-index: 999;
+            pointer-events: none;
+        }
+        .coin::before {
+            content: '$';
+            display: block;
+            text-align: center;
+            line-height: 28px;
+            font-weight: bold;
+            color: #8b6914;
+            font-size: 18px;
+        }
+        @keyframes coinFall {
+            0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0.3; }
+        }
+
+        /* 💯 飄字加分提示 */
+        .score-popup {
+            position: absolute;
+            color: #fbc531;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+            pointer-events: none;
+            animation: scoreFloat 1.2s ease-out forwards;
+            z-index: 500;
+        }
+        @keyframes scoreFloat {
+            0%   { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-60px); opacity: 0; }
+        }
+
+        /* 倍率徽章 */
+        .multiplier-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b6b, #fbc531);
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-left: 6px;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+        }
+
+        /* 📋 結算畫面 modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        .modal-overlay.show {
+            display: flex;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        .modal-card {
+            background: #22252c;
+            border: 3px solid #fbc531;
+            border-radius: 20px;
+            padding: 25px;
+            width: 100%;
+            max-width: 420px;
+            color: #fff;
+            box-shadow: 0 0 40px rgba(251, 197, 49, 0.4);
+            animation: cardPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes cardPop {
+            from { transform: scale(0.7); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        .modal-card h2 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            color: #fbc531;
+            font-size: 24px;
+            text-shadow: 0 0 10px rgba(251, 197, 49, 0.5);
+        }
+        .record-break {
+            background: linear-gradient(135deg, #ff9f43, #fbc531);
+            color: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+            animation: recordShine 1.5s ease-in-out infinite;
+        }
+        @keyframes recordShine {
+            0%, 100% { box-shadow: 0 0 10px rgba(251, 197, 49, 0.5); }
+            50%      { box-shadow: 0 0 25px rgba(251, 197, 49, 1); }
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .stat-item {
+            background: #1e2229;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            text-align: center;
+        }
+        .stat-item .stat-label {
+            font-size: 12px;
+            color: #a4b0be;
+            margin-bottom: 4px;
+        }
+        .stat-item .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .stat-item .stat-value.highlight {
+            color: #fbc531;
+        }
+        .weakness-box {
+            background: #1e2229;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #ff6b6b;
+            margin-bottom: 15px;
+        }
+        .weakness-box .weakness-title {
+            font-size: 13px;
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .weakness-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 15px;
+        }
+        .weakness-item .item-name {
+            font-weight: bold;
+            color: #fff;
+        }
+        .weakness-item .item-count {
+            color: #ff9f43;
+            font-size: 13px;
+        }
+        .modal-card .btn-restart {
+            background: #ff4757;
+            color: #fff;
+            border: none;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 5px 0 #cf2131;
+            transition: all 0.1s;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .modal-card .btn-restart:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #cf2131;
+        }
+
+        /* 🌈 完美達陣（全對 20 題）特效 */
+        .modal-card.perfect {
+            border: 4px solid transparent;
+            background:
+                linear-gradient(#22252c, #22252c) padding-box,
+                linear-gradient(135deg, #ff6b6b, #fbc531, #4cd137, #54a0ff, #c44dff) border-box;
+            animation: rainbowBorder 3s linear infinite, cardPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 60px rgba(251, 197, 49, 0.7);
+        }
+        @keyframes rainbowBorder {
+            0%   { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        .modal-card.perfect h2 {
+            background: linear-gradient(90deg, #ff6b6b, #fbc531, #4cd137, #54a0ff, #c44dff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 30px;
+            animation: titleShimmer 2s linear infinite;
+            text-shadow: none;
+        }
+        @keyframes titleShimmer {
+            0%, 100% { filter: brightness(1); }
+            50%      { filter: brightness(1.4); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app-container">
+    <h1 id="main-title">🎰 三角比街機挑戰</h1>
+
+    <div class="difficulty-selector" id="difficulty-selector">
+        <!-- 由 JS 動態生成 -->
+    </div>
+
+    <div class="best-board">
+        <div><span class="label">🏆 最高分</span><br><span id="best-score">0</span></div>
+        <div><span class="label">🔥 最長連對</span><br><span id="best-combo">0</span></div>
+        <div><span class="label">⚡ 最快反應</span><br><span id="best-reaction">—</span></div>
+    </div>
+    
+    <div class="score-board">
+        <div>得分: <span id="score-correct">0</span></div>
+        <div>進度: <span id="score-total">0</span> / <span id="score-max">20</span></div>
+        <div class="combo-box" id="combo-display">Combo: <span id="score-combo">0</span></div>
+    </div>
+
+    <div class="timer-container">
+        <div class="timer-bar" id="timer-bar"></div>
+    </div>
+
+    <div class="slot-machine">
+        <div class="reel" id="reel-func">???</div>
+        <div class="reel" id="reel-angle">???</div>
+    </div>
+
+    <button class="btn-spin" id="btn-spin" onclick="spin()">🎰 拉動拉霸！</button>
+
+    <div class="options-grid" id="options-container"></div>
+
+    <div class="feedback" id="feedback">點擊拉霸開始挑戰！</div>
+</div>
+
+<!-- 里程碑橫幅（隱藏，觸發時才顯示） -->
+<div class="milestone-banner" id="milestone-banner"></div>
+
+<!-- 結算畫面 -->
+<div class="modal-overlay" id="result-modal">
+    <div class="modal-card" id="modal-card">
+        <h2 id="modal-title">🎰 本局結算 🎰</h2>
+        <div id="record-break-container"></div>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">本局得分</div>
+                <div class="stat-value highlight" id="result-score">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">最長連對 🔥</div>
+                <div class="stat-value" id="result-combo">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">正確率</div>
+                <div class="stat-value" id="result-accuracy">0%</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">平均反應 ⚡</div>
+                <div class="stat-value" id="result-reaction">— 秒</div>
+            </div>
+        </div>
+        <div class="weakness-box" id="weakness-container" style="display:none;">
+            <div class="weakness-title">⚠️ 本局弱點題目</div>
+            <div id="weakness-list"></div>
+        </div>
+        <button class="btn-restart" onclick="restartGame()">🎰 再來一局</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 🎵 3. 音效合成器 (Web Audio API)
+    // ==========================================
+    let audioCtx = null;
+    function getAudioContext() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx;
+    }
+    
+    function playSound(type) {
+        try {
+            const ctx = getAudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            const now = ctx.currentTime;
+
+            if (type === 'spin') {
+                // 復古拉霸滾動聲（短促的方波）
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(200 + Math.random() * 100, now);
+                gain.gain.setValueAtTime(0.03, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'correct') {
+                // 答對的叮咚聲（上升的和弦）
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } else if (type === 'wrong') {
+                // 答錯或超時的警報聲（下降的鋸齒波）
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(90, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'combo') {
+                // 連擊音效（更高亢、興奮的聲音）
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(880, now); 
+                osc.frequency.setValueAtTime(1318.51, now + 0.08); 
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        } catch (e) { console.log("音效撥放失敗，需點擊網頁激活音訊", e); }
+    }
+
+    // ==========================================
+    // 🛠️ 題目與答案設定
+    // ==========================================
+    const text_sqrt2 = '<span class="sqrt">√<span class="roof">2</span></span>';
+    const text_sqrt3 = '<span class="sqrt">√<span class="roof">3</span></span>';
+
+    // 正分數
+    const ans_1_over_2 = '<div class="frac"><span class="num">1</span><span class="den">2</span></div>';
+    const ans_sqrt2_over_2 = `<div class="frac"><span class="num">${text_sqrt2}</span><span class="den">2</span></div>`;
+    const ans_sqrt3_over_2 = `<div class="frac"><span class="num">${text_sqrt3}</span><span class="den">2</span></div>`;
+    const ans_sqrt3_over_3 = `<div class="frac"><span class="num">${text_sqrt3}</span><span class="den">3</span></div>`;
+    const ans_1 = '1';
+    const ans_sqrt3 = text_sqrt3;
+
+    // 整數答案（大師場新增）
+    const ans_0 = '0';
+    const ans_neg_1 = '−1';
+    const ans_undefined = '未定義';
+
+    // 負分數（挑戰場新增）
+    const ans_neg_1_over_2 = '<div class="frac"><span class="num">−1</span><span class="den">2</span></div>';
+    const ans_neg_sqrt2_over_2 = `<div class="frac"><span class="num">−${text_sqrt2}</span><span class="den">2</span></div>`;
+    const ans_neg_sqrt3_over_2 = `<div class="frac"><span class="num">−${text_sqrt3}</span><span class="den">2</span></div>`;
+    const ans_neg_sqrt3_over_3 = `<div class="frac"><span class="num">−${text_sqrt3}</span><span class="den">3</span></div>`;
+    const ans_neg_sqrt3 = `−${text_sqrt3}`;
+
+    // 完整答案對照表（所有題目都在這）
+    const answerKey = {
+        // 初學場
+        'sin_30°': ans_1_over_2,    'sin_45°': ans_sqrt2_over_2,  'sin_60°': ans_sqrt3_over_2,
+        'cos_30°': ans_sqrt3_over_2,'cos_45°': ans_sqrt2_over_2,  'cos_60°': ans_1_over_2,
+        'tan_30°': ans_sqrt3_over_3,'tan_45°': ans_1,             'tan_60°': ans_sqrt3,
+        // 大師場新增（0°/90°/180°）
+        'sin_0°': ans_0,            'sin_90°': ans_1,             'sin_180°': ans_0,
+        'cos_0°': ans_1,            'cos_90°': ans_0,             'cos_180°': ans_neg_1,
+        'tan_0°': ans_0,            'tan_90°': ans_undefined,     'tan_180°': ans_0,
+        // 挑戰場新增（120°/135°/150°）
+        'sin_120°': ans_sqrt3_over_2,    'sin_135°': ans_sqrt2_over_2,    'sin_150°': ans_1_over_2,
+        'cos_120°': ans_neg_1_over_2,    'cos_135°': ans_neg_sqrt2_over_2,'cos_150°': ans_neg_sqrt3_over_2,
+        'tan_120°': ans_neg_sqrt3,       'tan_135°': ans_neg_1,           'tan_150°': ans_neg_sqrt3_over_3
+    };
+
+    const funcs = ['sin', 'cos', 'tan'];
+
+    // 🎚️ 三個難度的角度池
+    const difficulties = {
+        beginner: {
+            name: '初學場',
+            emoji: '🎰',
+            angles: ['30°', '45°', '60°'],
+            // 答案池：該難度可能出現的所有答案
+            answerPool: [ans_1_over_2, ans_sqrt2_over_2, ans_sqrt3_over_2, ans_sqrt3_over_3, ans_1, ans_sqrt3]
+        },
+        master: {
+            name: '大師場',
+            emoji: '👑',
+            // 大師場 = 初學場 + 0°/90°/180°
+            angles: ['30°', '45°', '60°', '0°', '90°', '180°'],
+            answerPool: [
+                ans_1_over_2, ans_sqrt2_over_2, ans_sqrt3_over_2, ans_sqrt3_over_3, ans_1, ans_sqrt3,
+                ans_0, ans_neg_1, ans_undefined
+            ]
+        },
+        challenge: {
+            name: '挑戰場',
+            emoji: '🔥',
+            // 挑戰場 = 全部
+            angles: ['30°', '45°', '60°', '0°', '90°', '180°', '120°', '135°', '150°'],
+            answerPool: [
+                ans_1_over_2, ans_sqrt2_over_2, ans_sqrt3_over_2, ans_sqrt3_over_3, ans_1, ans_sqrt3,
+                ans_0, ans_neg_1, ans_undefined,
+                ans_neg_1_over_2, ans_neg_sqrt2_over_2, ans_neg_sqrt3_over_2, ans_neg_sqrt3_over_3, ans_neg_sqrt3
+            ]
+        }
+    };
+
+    // 每題顯示的選項數
+    const OPTIONS_PER_QUESTION = 6;
+
+    // ==========================================
+    // ⚙️ 遊戲狀態變數
+    // ==========================================
+    let currentFunc = '';
+    let currentAngle = '';
+    let hasAnswered = true; 
+    let totalQuestions = 0;
+    let correctAnswers = 0;
+    let comboCount = 0; // 連擊計數
+    let currentScore = 0; // 本局得分（含倍率）
+    let maxComboThisRound = 0; // 本局最長連對
+
+    // ⚡ 反應時間追蹤
+    let questionStartTime = 0; // 拉霸停下的時刻（performance.now()）
+    let correctReactionTimes = []; // 本局答對題目的反應時間（毫秒）
+
+    // 📋 本局弱點統計
+    let wrongCountThisRound = {}; // { 'sin_30°': 2, ... }
+
+    // 計時器變數
+    let timerId = null;
+    let timeLeft = 100; // 百分比
+    const QUESTION_TIME = 10; // 每一題 10 秒倒數
+
+    // 🎯 結算規則
+    const MIN_QUESTIONS_TO_SETTLE = 3; // 至少答完幾題才會跳結算
+    const MAX_QUESTIONS_PER_ROUND = 20; // 每局題數上限
+
+    // 🎚️ 難度狀態
+    let currentDifficulty = 'beginner'; // 預設初學場
+
+    // 🏆 最佳紀錄（各難度獨立存）
+    const STORAGE_KEY = 'trigSlot_v3';
+    let allRecords = loadAllRecords();
+    let triggeredMilestones = new Set();
+
+    function loadAllRecords() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return {
+            beginner:  { bestScore: 0, bestCombo: 0, bestReactionMs: null },
+            master:    { bestScore: 0, bestCombo: 0, bestReactionMs: null },
+            challenge: { bestScore: 0, bestCombo: 0, bestReactionMs: null }
+        };
+    }
+
+    function saveAllRecords() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allRecords));
+        } catch (e) {}
+    }
+
+    // 取得當前難度的紀錄（用 getter 形式方便讀寫）
+    function getBest() { return allRecords[currentDifficulty]; }
+
+    function renderBestRecord() {
+        const r = getBest();
+        document.getElementById('best-score').innerText = r.bestScore;
+        document.getElementById('best-combo').innerText = r.bestCombo;
+        document.getElementById('best-reaction').innerText =
+            r.bestReactionMs == null ? '—' : (r.bestReactionMs / 1000).toFixed(2) + ' 秒';
+    }
+
+    // 🎚️ 渲染難度切換器按鈕
+    function renderDifficultySelector() {
+        const container = document.getElementById('difficulty-selector');
+        container.innerHTML = '';
+        Object.entries(difficulties).forEach(([key, info]) => {
+            const btn = document.createElement('button');
+            btn.className = 'diff-btn' + (key === currentDifficulty ? ' active' : '');
+            btn.innerHTML = `<span class="diff-emoji">${info.emoji}</span>${info.name}`;
+            btn.onclick = () => switchDifficulty(key);
+            container.appendChild(btn);
+        });
+    }
+
+    // 🎚️ 切換難度（會重置本局）
+    function switchDifficulty(key) {
+        if (key === currentDifficulty) return;
+        // 如果遊戲進行中（已拉霸但未答完），提示確認
+        if (!hasAnswered) {
+            if (!confirm('遊戲進行中，切換難度會重置本局，確定要切換嗎？')) return;
+        } else if (totalQuestions > 0) {
+            // 已經答過題了，但目前沒題目在進行
+            if (!confirm('切換難度會重置本局進度，確定嗎？')) return;
+        }
+        currentDifficulty = key;
+        renderDifficultySelector();
+        renderBestRecord();
+        // 更新標題上的難度標示
+        const diff = difficulties[key];
+        document.getElementById('main-title').innerHTML = `${diff.emoji} ${diff.name}`;
+        // 重置本局
+        restartGame();
+    }
+
+    // 🎯 依連擊數決定分數倍率
+    // 0~2 連: x1, 3~4 連: x2, 5~9 連: x3, 10~19 連: x5, 20+ 連: x10
+    function getMultiplier(combo) {
+        if (combo >= 20) return 10;
+        if (combo >= 10) return 5;
+        if (combo >= 5)  return 3;
+        if (combo >= 3)  return 2;
+        return 1;
+    }
+
+    // 清空選項區（每次拉霸結束後才會動態生成新選項）
+    function initOptions() {
+        document.getElementById('options-container').innerHTML = '';
+    }
+
+    // 🎲 為當前題目動態生成選項：取正答 + 從答案池抽干擾選項
+    function generateOptions() {
+        const diff = difficulties[currentDifficulty];
+        const correctAns = answerKey[`${currentFunc}_${currentAngle}`];
+        const pool = diff.answerPool;
+
+        // 從池中扣掉正答，剩下的當干擾選項
+        const distractors = pool.filter(a => a !== correctAns);
+
+        // 洗牌取 OPTIONS_PER_QUESTION - 1 個干擾項
+        const wantedDistractors = Math.min(distractors.length, OPTIONS_PER_QUESTION - 1);
+        const shuffledDistractors = shuffle(distractors).slice(0, wantedDistractors);
+
+        // 加入正答後再洗一次，正答位置隨機
+        const finalOptions = shuffle([correctAns, ...shuffledDistractors]);
+
+        // 渲染按鈕
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+        finalOptions.forEach(ans => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-option';
+            btn.innerHTML = ans;
+            btn.disabled = false;
+            btn.onclick = () => checkAnswer(ans, btn);
+            container.appendChild(btn);
+        });
+    }
+
+    // Fisher-Yates 洗牌
+    function shuffle(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    }
+
+    // 拉霸滾動邏輯
+    function spin() {
+        if (!hasAnswered) return; 
+        hasAnswered = false;
+        
+        // 確保音訊環境被激活
+        getAudioContext();
+
+        document.getElementById('btn-spin').disabled = true;
+        document.getElementById('feedback').innerText = '🤔 思考中...';
+        document.getElementById('feedback').style.color = '#fff';
+        
+        // 重設進度條顏色
+        document.getElementById('timer-bar').style.width = '100%';
+        document.getElementById('timer-bar').style.backgroundColor = '#4cd137';
+
+        // 清掉舊選項
+        document.getElementById('options-container').innerHTML = '';
+
+        const angles = difficulties[currentDifficulty].angles;
+        let shuffleCount = 0;
+        const interval = setInterval(() => {
+            document.getElementById('reel-func').innerText = funcs[Math.floor(Math.random() * funcs.length)];
+            document.getElementById('reel-angle').innerText = angles[Math.floor(Math.random() * angles.length)];
+            
+            // 🎵 撥放滾動音效
+            playSound('spin');
+            
+            shuffleCount++;
+            
+            if (shuffleCount > 10) {
+                clearInterval(interval);
+                currentFunc = funcs[Math.floor(Math.random() * funcs.length)];
+                currentAngle = angles[Math.floor(Math.random() * angles.length)];
+                document.getElementById('reel-func').innerText = currentFunc;
+                document.getElementById('reel-angle').innerText = currentAngle;
+                
+                document.getElementById('btn-spin').disabled = false;
+
+                // 🎲 動態生成本題選項
+                generateOptions();
+                
+                // ⏱️ 滾動停止後，啟動計時器
+                startTimer();
+            }
+        }, 100);
+    }
+
+    // ⏱️ 計時器控制
+    function startTimer() {
+        clearInterval(timerId);
+        // ⚡ 記錄反應時間起點（拉霸停下的瞬間）
+        questionStartTime = performance.now();
+        let elapsed = 0;
+        const totalSteps = QUESTION_TIME * 10; // 每 0.1 秒跑一步
+        
+        timerId = setInterval(() => {
+            elapsed++;
+            timeLeft = 100 - (elapsed / totalSteps) * 100;
+            const bar = document.getElementById('timer-bar');
+            bar.style.width = timeLeft + '%';
+
+            // 剩餘 30% 時間變黃色，15% 時間變紅色逼人
+            if (timeLeft < 15) {
+                bar.style.backgroundColor = '#ff4757';
+            } else if (timeLeft < 40) {
+                bar.style.backgroundColor = '#fbc531';
+            }
+
+            // 時間到！強制判斷輸掉
+            if (elapsed >= totalSteps) {
+                clearInterval(timerId);
+                handleTimeout();
+            }
+        }, 100);
+    }
+
+    // 超時處理
+    function handleTimeout() {
+        hasAnswered = true;
+        totalQuestions++;
+        document.getElementById('score-total').innerText = totalQuestions;
+
+        // 記錄弱點（超時等同錯一題）
+        const qKey = `${currentFunc}_${currentAngle}`;
+        wrongCountThisRound[qKey] = (wrongCountThisRound[qKey] || 0) + 1;
+        
+        // 斷掉連擊
+        breakCombo();
+
+        const correctAns = answerKey[`${currentFunc}_${currentAngle}`];
+        const feedbackEl = document.getElementById('feedback');
+
+        // 🎵 播放失敗音效
+        playSound('wrong');
+
+        const buttons = document.querySelectorAll('.btn-option');
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            if (btn.innerHTML === correctAns) {
+                btn.classList.add('wrong'); // 沒選時間到，直接變紅
+                showCorrectHint(correctAns);
+            }
+        });
+
+        // 🏁 觸發結算（最少 3 題才算數）
+        if (totalQuestions >= MIN_QUESTIONS_TO_SETTLE) {
+            feedbackEl.innerHTML = `⏰ 時間到！正確答案是：`;
+            feedbackEl.style.color = '#ff4757';
+            setTimeout(() => showResultModal(), 1600);
+        } else {
+            feedbackEl.innerHTML = `⏰ 太慢了！繼續：`;
+            feedbackEl.style.color = '#ff9f43';
+        }
+    }
+
+    // 檢查答案
+    function checkAnswer(selectedAns, clickedButton) {
+        if (hasAnswered) return; 
+        hasAnswered = true;
+        clearInterval(timerId); // 停止計時器
+
+        // ⚡ 計算反應時間
+        const reactionMs = performance.now() - questionStartTime;
+        
+        totalQuestions++;
+        document.getElementById('score-total').innerText = totalQuestions;
+
+        const correctAns = answerKey[`${currentFunc}_${currentAngle}`];
+        const feedbackEl = document.getElementById('feedback');
+        const buttons = document.querySelectorAll('.btn-option');
+        
+        buttons.forEach(btn => btn.disabled = true);
+
+        if (selectedAns === correctAns) {
+            clickedButton.classList.add('correct');
+            correctAnswers++;
+            
+            // ⚡ 只記錄答對的反應時間
+            correctReactionTimes.push(reactionMs);
+
+            // 🔥 連擊增加邏輯
+            comboCount++;
+            if (comboCount > maxComboThisRound) maxComboThisRound = comboCount;
+            document.getElementById('score-combo').innerText = comboCount;
+
+            // 💰 計算本題得分（基礎 10 分 × 倍率）
+            const multiplier = getMultiplier(comboCount);
+            const gained = 10 * multiplier;
+            currentScore += gained;
+            document.getElementById('score-correct').innerText = currentScore;
+
+            // 飄字加分
+            showScorePopup(clickedButton, gained, multiplier);
+
+            // 🌟 根據連擊數決定特效強度
+            updateGlow(comboCount);
+
+            // 🎊 里程碑橫幅（每個里程碑本局只觸發一次）
+            checkMilestone(comboCount);
+            
+            if (comboCount >= 3) {
+                document.getElementById('combo-display').classList.add('combo-active');
+                const badge = `<span class="multiplier-badge">x${multiplier}</span>`;
+                feedbackEl.innerHTML = `🔥 ${comboCount} 連擊！ +${gained} 分 ${badge}`;
+                feedbackEl.style.color = '#ff9f43';
+                playSound('combo');
+            } else {
+                feedbackEl.innerHTML = `🎉 答對了！+${gained} 分`;
+                feedbackEl.style.color = '#2ed573';
+                playSound('correct');
+            }
+
+            // 📈 更新最佳紀錄（即時顯示）
+            updateBestRecord(reactionMs);
+
+            // 🎊 達到題數上限：完美達陣結算（因為走到這分支代表這題答對）
+            if (totalQuestions >= MAX_QUESTIONS_PER_ROUND) {
+                setTimeout(() => showResultModal(true), 1200);
+            }
+            
+        } else {
+            // ❌ 答錯：記錄弱點題目
+            const qKey = `${currentFunc}_${currentAngle}`;
+            wrongCountThisRound[qKey] = (wrongCountThisRound[qKey] || 0) + 1;
+
+            clickedButton.classList.add('wrong');
+            playSound('wrong');
+            // 斷掉連擊
+            breakCombo();
+            showCorrectHint(correctAns);
+
+            // 🏁 觸發結算（最少 3 題才算數）
+            if (totalQuestions >= MIN_QUESTIONS_TO_SETTLE) {
+                feedbackEl.innerHTML = `❌ 答錯囉！答案是：`;
+                feedbackEl.style.color = '#ff4757';
+                // 給玩家 1.6 秒看清楚正確答案，再跳結算
+                setTimeout(() => showResultModal(), 1600);
+            } else {
+                // 還沒滿 3 題就答錯：給個提示，但不結算
+                feedbackEl.innerHTML = `❌ 太快了！繼續：`;
+                feedbackEl.style.color = '#ff9f43';
+            }
+        }
+    }
+
+    // 🌟 根據連擊數套用對應的金光強度
+    function updateGlow(combo) {
+        const app = document.getElementById('app-container');
+        app.classList.remove('glow-3', 'glow-5', 'glow-10');
+        if (combo >= 10)      app.classList.add('glow-10');
+        else if (combo >= 5)  app.classList.add('glow-5');
+        else if (combo >= 3)  app.classList.add('glow-3');
+    }
+
+    // 🎊 里程碑檢查與觸發
+    function checkMilestone(combo) {
+        const milestones = {
+            3:  { text: 'COMBO x3', sub: '火力全開！', coins: 0 },
+            5:  { text: 'COMBO x5 🔥', sub: '分數倍率 ×3！', coins: 15 },
+            10: { text: '💰 JACKPOT 💰', sub: '十連擊！分數倍率 ×5！', coins: 40 },
+            20: { text: '👑 神之領域 👑', sub: '二十連擊！分數倍率 ×10！', coins: 80 }
+        };
+        const m = milestones[combo];
+        if (m && !triggeredMilestones.has(combo)) {
+            triggeredMilestones.add(combo);
+            showMilestoneBanner(m.text, m.sub);
+            if (m.coins > 0) dropCoins(m.coins);
+        }
+    }
+
+    // 顯示中央橫幅
+    function showMilestoneBanner(text, sub) {
+        const banner = document.getElementById('milestone-banner');
+        banner.innerHTML = `${text}<span class="sub">${sub}</span>`;
+        banner.classList.remove('show');
+        // 強制 reflow 讓動畫可以重播
+        void banner.offsetWidth;
+        banner.classList.add('show');
+    }
+
+    // 🪙 金幣灑落
+    function dropCoins(count) {
+        for (let i = 0; i < count; i++) {
+            const coin = document.createElement('div');
+            coin.className = 'coin';
+            coin.style.left = Math.random() * 100 + 'vw';
+            const duration = 1.5 + Math.random() * 1.5;
+            const delay = Math.random() * 0.8;
+            coin.style.animation = `coinFall ${duration}s ${delay}s linear forwards`;
+            document.body.appendChild(coin);
+            setTimeout(() => coin.remove(), (duration + delay) * 1000 + 100);
+        }
+    }
+
+    // 💯 飄字加分
+    function showScorePopup(targetBtn, points, multiplier) {
+        const rect = targetBtn.getBoundingClientRect();
+        const popup = document.createElement('div');
+        popup.className = 'score-popup';
+        popup.innerHTML = multiplier > 1 ? `+${points} (x${multiplier})` : `+${points}`;
+        popup.style.left = (rect.left + rect.width / 2 - 30) + 'px';
+        popup.style.top = (rect.top - 10) + 'px';
+        document.body.appendChild(popup);
+        setTimeout(() => popup.remove(), 1300);
+    }
+
+    // 📈 更新最佳紀錄並存檔（即時更新最高分與最長連對的顯示，最快反應只在結算時算）
+    function updateBestRecord(reactionMs) {
+        const r = getBest();
+        let changed = false;
+        if (currentScore > r.bestScore) {
+            r.bestScore = currentScore;
+            changed = true;
+        }
+        if (comboCount > r.bestCombo) {
+            r.bestCombo = comboCount;
+            changed = true;
+        }
+        if (changed) {
+            saveAllRecords();
+            renderBestRecord();
+        }
+    }
+
+    // 🏁 顯示結算畫面
+    function showResultModal(isPerfect = false) {
+        // 算平均反應時間（只算答對的）
+        let avgReactionStr = '— 秒';
+        let avgReactionMs = null;
+        if (correctReactionTimes.length > 0) {
+            avgReactionMs = correctReactionTimes.reduce((a, b) => a + b, 0) / correctReactionTimes.length;
+            avgReactionStr = (avgReactionMs / 1000).toFixed(2) + ' 秒';
+        }
+
+        // 算正確率
+        const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+
+        // 判斷破紀錄：跟「本局開始前的舊紀錄」比較
+        // （因為 bestScore 與 bestCombo 已被即時更新，要靠 _roundStartBest 保留進入時的值）
+        const startBest = window._roundStartBest || { score: 0, combo: 0, reaction: null };
+        const isNewScore = currentScore > startBest.score;
+        const isNewCombo = maxComboThisRound > startBest.combo;
+        const isNewReaction = avgReactionMs != null && correctReactionTimes.length >= 3 &&
+            (startBest.reaction == null || avgReactionMs < startBest.reaction);
+
+        const broken = [];
+        if (isNewScore) broken.push(`最高分 ${startBest.score} → ${currentScore}`);
+        if (isNewCombo) broken.push(`最長連對 ${startBest.combo} → ${maxComboThisRound}`);
+        if (isNewReaction) {
+            const oldStr = startBest.reaction == null ? '無' : (startBest.reaction / 1000).toFixed(2) + ' 秒';
+            broken.push(`最快反應 ${oldStr} → ${avgReactionStr}`);
+            getBest().bestReactionMs = avgReactionMs;
+            saveAllRecords();
+            renderBestRecord();
+        }
+
+        // 寫入結算數值
+        document.getElementById('result-score').innerText = currentScore;
+        document.getElementById('result-combo').innerText = maxComboThisRound;
+        document.getElementById('result-accuracy').innerText = accuracy + '%';
+        document.getElementById('result-reaction').innerText = avgReactionStr;
+
+        // 破紀錄祝賀
+        const recordContainer = document.getElementById('record-break-container');
+        if (broken.length > 0) {
+            recordContainer.innerHTML =
+                `<div class="record-break">🎉 破紀錄！<br>${broken.join('<br>')}</div>`;
+            playSound('combo');
+            dropCoins(25);
+        } else {
+            recordContainer.innerHTML = '';
+        }
+
+        // 弱點題目（本局錯最多的，取前 3）
+        const weaknessList = Object.entries(wrongCountThisRound)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+        const weaknessBox = document.getElementById('weakness-container');
+        if (weaknessList.length > 0) {
+            const html = weaknessList.map(([key, count]) => {
+                const [fn, ang] = key.split('_');
+                return `<div class="weakness-item">
+                    <span class="item-name">${fn} ${ang}</span>
+                    <span class="item-count">錯 ${count} 次</span>
+                </div>`;
+            }).join('');
+            document.getElementById('weakness-list').innerHTML = html;
+            weaknessBox.style.display = 'block';
+        } else {
+            weaknessBox.style.display = 'none';
+        }
+
+        // 🌈 完美達陣特殊樣式
+        const modalCard = document.getElementById('modal-card');
+        const modalTitle = document.getElementById('modal-title');
+        if (isPerfect) {
+            modalCard.classList.add('perfect');
+            modalTitle.innerHTML = '🎊 完美達陣 🎊';
+            // 灑超多金幣
+            dropCoins(80);
+            playSound('combo');
+        } else {
+            modalCard.classList.remove('perfect');
+            modalTitle.innerHTML = '🎰 本局結算 🎰';
+        }
+
+        // 顯示 modal
+        document.getElementById('result-modal').classList.add('show');
+    }
+
+    // 🔄 重新開始一局
+    function restartGame() {
+        // 隱藏結算
+        document.getElementById('result-modal').classList.remove('show');
+
+        // 重置本局狀態
+        totalQuestions = 0;
+        correctAnswers = 0;
+        currentScore = 0;
+        comboCount = 0;
+        maxComboThisRound = 0;
+        correctReactionTimes = [];
+        wrongCountThisRound = {};
+        triggeredMilestones.clear();
+        hasAnswered = true;
+
+        // 重置 UI
+        document.getElementById('score-correct').innerText = 0;
+        document.getElementById('score-total').innerText = 0;
+        document.getElementById('score-combo').innerText = 0;
+        document.getElementById('combo-display').className = 'combo-box';
+        document.getElementById('reel-func').innerText = '???';
+        document.getElementById('reel-angle').innerText = '???';
+        document.getElementById('feedback').innerText = '點擊拉霸開始挑戰！';
+        document.getElementById('feedback').style.color = '#fff';
+        document.getElementById('timer-bar').style.width = '100%';
+        document.getElementById('timer-bar').style.backgroundColor = '#4cd137';
+
+        const app = document.getElementById('app-container');
+        app.classList.remove('glow-3', 'glow-5', 'glow-10');
+
+        const buttons = document.querySelectorAll('.btn-option');
+        buttons.forEach(btn => {
+            btn.className = 'btn-option';
+            btn.disabled = true;
+        });
+
+        // 記錄這局開始時的紀錄基準（給結算判斷破紀錄用）
+        const r = getBest();
+        window._roundStartBest = {
+            score: r.bestScore,
+            combo: r.bestCombo,
+            reaction: r.bestReactionMs
+        };
+    }
+
+    // 輔助：顯示正確答案的提示外框
+    function showCorrectHint(correctAns) {
+        const buttons = document.querySelectorAll('.btn-option');
+        const feedbackEl = document.getElementById('feedback');
+        buttons.forEach(btn => {
+            if (btn.innerHTML === correctAns) {
+                btn.classList.add('correct-hint');
+                const clone = btn.cloneNode(true);
+                clone.className = '';
+                clone.style.display = 'inline-block';
+                clone.style.marginLeft = '10px';
+                feedbackEl.appendChild(clone);
+            }
+        });
+    }
+
+    // 輔助：中斷連擊
+    function breakCombo() {
+        comboCount = 0;
+        document.getElementById('score-combo').innerText = comboCount;
+        document.getElementById('combo-display').className = 'combo-box'; // 拔掉特效
+        // 清除金光邊框
+        const app = document.getElementById('app-container');
+        app.classList.remove('glow-3', 'glow-5', 'glow-10');
+        // 重設里程碑（連擊斷了，下一波重新計算）
+        triggeredMilestones.clear();
+    }
+
+    initOptions();
+    renderBestRecord();
+    renderDifficultySelector(); // 渲染難度切換器
+    // 初始化第一局的紀錄基準
+    const _initR = getBest();
+    window._roundStartBest = {
+        score: _initR.bestScore,
+        combo: _initR.bestCombo,
+        reaction: _initR.bestReactionMs
+    };
+</script>
+
+</body>
+</html>
