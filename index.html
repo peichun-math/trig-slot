@@ -448,6 +448,26 @@
             0%, 100% { box-shadow: 0 0 10px rgba(251, 197, 49, 0.5); }
             50%      { box-shadow: 0 0 25px rgba(251, 197, 49, 1); }
         }
+        /* 🕵️ 隱藏成就彩蛋（偵測到非真人點擊時顯示） */
+        .secret-achievement {
+            background: linear-gradient(135deg, #7d5fff, #18dcff);
+            color: #fff;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 15px;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.35);
+            animation: recordShine 1.5s ease-in-out infinite;
+        }
+        .secret-achievement .ach-tag {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 17px;
+            color: #fff17a;
+        }
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -719,10 +739,38 @@
         // 挑戰場新增（120°/135°/150°）
         'sin_120°': ans_sqrt3_over_2,    'sin_135°': ans_sqrt2_over_2,    'sin_150°': ans_1_over_2,
         'cos_120°': ans_neg_1_over_2,    'cos_135°': ans_neg_sqrt2_over_2,'cos_150°': ans_neg_sqrt3_over_2,
-        'tan_120°': ans_neg_sqrt3,       'tan_135°': ans_neg_1,           'tan_150°': ans_neg_sqrt3_over_3
+        'tan_120°': ans_neg_sqrt3,       'tan_135°': ans_neg_1,           'tan_150°': ans_neg_sqrt3_over_3,
+        // 挑戰場新增（三象限 210°/225°/240°：sin−、cos−、tan+）
+        'sin_210°': ans_neg_1_over_2,    'sin_225°': ans_neg_sqrt2_over_2,'sin_240°': ans_neg_sqrt3_over_2,
+        'cos_210°': ans_neg_sqrt3_over_2,'cos_225°': ans_neg_sqrt2_over_2,'cos_240°': ans_neg_1_over_2,
+        'tan_210°': ans_sqrt3_over_3,    'tan_225°': ans_1,               'tan_240°': ans_sqrt3,
+        // 挑戰場新增（四象限 300°/315°/330°：sin−、cos+、tan−）
+        'sin_300°': ans_neg_sqrt3_over_2,'sin_315°': ans_neg_sqrt2_over_2,'sin_330°': ans_neg_1_over_2,
+        'cos_300°': ans_1_over_2,        'cos_315°': ans_sqrt2_over_2,    'cos_330°': ans_sqrt3_over_2,
+        'tan_300°': ans_neg_sqrt3,       'tan_315°': ans_neg_1,           'tan_330°': ans_neg_sqrt3_over_3,
+        // 挑戰場新增（軸上角 270°/360°）
+        'sin_270°': ans_neg_1,           'sin_360°': ans_0,
+        'cos_270°': ans_0,               'cos_360°': ans_1,
+        'tan_270°': ans_undefined,       'tan_360°': ans_0
     };
 
     const funcs = ['sin', 'cos', 'tan'];
+
+    // 🎯 依權重抽一個角：難度有設定 angleWeights 時照權重抽，沒設定就均勻抽。
+    //    讓某些角（如大師場的軸上角）出現頻率高一點，而不必在 angles 裡塞重複值。
+    function pickWeightedAngle(diff) {
+        const angles = diff.angles;
+        const weights = diff.angleWeights;
+        if (!weights) return angles[Math.floor(Math.random() * angles.length)];
+        const w = angles.map(a => weights[a] || 1);   // 沒列到的角預設權重 1
+        const total = w.reduce((s, x) => s + x, 0);
+        let r = Math.random() * total;
+        for (let i = 0; i < angles.length; i++) {
+            r -= w[i];
+            if (r < 0) return angles[i];
+        }
+        return angles[angles.length - 1];
+    }
 
     // 🎚️ 三個難度的角度池
     const difficulties = {
@@ -738,6 +786,8 @@
             emoji: '👑',
             // 大師場 = 初學場 + 0°/90°/180°
             angles: ['30°', '45°', '60°', '0°', '90°', '180°'],
+            // 🎯 軸上角加權：權重 2 = 出現機率約為一般角(權重 1)的兩倍。想更常出現就把數字調大。
+            angleWeights: { '0°': 2, '90°': 2, '180°': 2 },
             answerPool: [
                 ans_1_over_2, ans_sqrt2_over_2, ans_sqrt3_over_2, ans_sqrt3_over_3, ans_1, ans_sqrt3,
                 ans_0, ans_neg_1, ans_undefined
@@ -746,8 +796,9 @@
         challenge: {
             name: '挑戰場',
             emoji: '🔥',
-            // 挑戰場 = 全部
-            angles: ['30°', '45°', '60°', '0°', '90°', '180°', '120°', '135°', '150°'],
+            // 挑戰場 = 全部（含三、四象限與 270°/360°）
+            angles: ['30°', '45°', '60°', '0°', '90°', '180°', '120°', '135°', '150°',
+                     '210°', '225°', '240°', '270°', '300°', '315°', '330°', '360°'],
             answerPool: [
                 ans_1_over_2, ans_sqrt2_over_2, ans_sqrt3_over_2, ans_sqrt3_over_3, ans_1, ans_sqrt3,
                 ans_0, ans_neg_1, ans_undefined,
@@ -777,6 +828,9 @@
 
     // 📋 本局弱點統計
     let wrongCountThisRound = {}; // { 'sin_30°': 2, ... }
+
+    // 🕵️ 本局是否偵測到非真人點擊（.click()/dispatchEvent 產生的事件 isTrusted 為 false）
+    let botSuspected = false;
 
     // 計時器變數
     let timerId = null;
@@ -896,7 +950,7 @@
             btn.className = 'btn-option';
             btn.innerHTML = ans;
             btn.disabled = false;
-            btn.onclick = () => checkAnswer(ans, btn);
+            btn.onclick = (e) => checkAnswer(ans, btn, e);
             container.appendChild(btn);
         });
     }
@@ -944,7 +998,7 @@
             if (shuffleCount > 10) {
                 clearInterval(interval);
                 currentFunc = funcs[Math.floor(Math.random() * funcs.length)];
-                currentAngle = angles[Math.floor(Math.random() * angles.length)];
+                currentAngle = pickWeightedAngle(difficulties[currentDifficulty]);
                 document.getElementById('reel-func').innerText = currentFunc;
                 document.getElementById('reel-angle').innerText = currentAngle;
                 
@@ -1028,9 +1082,14 @@
     }
 
     // 檢查答案
-    function checkAnswer(selectedAns, clickedButton) {
+    function checkAnswer(selectedAns, clickedButton, evt) {
         if (hasAnswered) return; 
         hasAnswered = true;
+
+        // 🕵️ 真人(滑鼠或手指)的點擊 isTrusted 一律為 true；
+        //    程式產生的點擊(.click() / dispatchEvent)則為 false。
+        //    這個判斷手機桌機通用，且不會誤傷任何真人。
+        if (evt && evt.isTrusted === false) botSuspected = true;
         clearInterval(timerId); // 停止計時器
 
         // ⚡ 計算反應時間
@@ -1245,6 +1304,22 @@
             recordContainer.innerHTML = '';
         }
 
+        // 🕵️ 反應時間輔助判斷：答對 ≥4 題、平均低於 0.3 秒，
+        //    人類在「讀題→回憶→在 6 個選項中找到正確的→移過去點」這套流程下到不了，
+        //    所以這幾乎只可能是會瞬間知道答案的程式。
+        if (correctReactionTimes.length >= 4) {
+            const avgMs = correctReactionTimes.reduce((a, b) => a + b, 0) / correctReactionTimes.length;
+            if (avgMs < 300) botSuspected = true;
+        }
+
+        // 偵測到非真人，就送上隱藏成就彩蛋（只有觸發的人自己看得到）
+        if (botSuspected) {
+            recordContainer.innerHTML =
+                `<div class="secret-achievement">🏆 恭喜通關！達成隱藏成就<br>` +
+                `<span class="ach-tag">【反應速度快到突破天際】</span></div>` +
+                recordContainer.innerHTML;
+        }
+
         // 弱點題目（本局錯最多的，取前 3）
         const weaknessList = Object.entries(wrongCountThisRound)
             .sort((a, b) => b[1] - a[1])
@@ -1295,6 +1370,7 @@
         maxComboThisRound = 0;
         correctReactionTimes = [];
         wrongCountThisRound = {};
+        botSuspected = false;
         triggeredMilestones.clear();
         hasAnswered = true;
 
