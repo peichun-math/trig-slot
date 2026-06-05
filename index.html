@@ -1314,10 +1314,21 @@
 
         // 偵測到非真人，就送上隱藏成就彩蛋（只有觸發的人自己看得到）
         if (botSuspected) {
-            recordContainer.innerHTML =
-                `<div class="secret-achievement">🏆 恭喜通關！達成隱藏成就<br>` +
-                `<span class="ach-tag">【反應速度快到突破天際】</span></div>` +
-                recordContainer.innerHTML;
+            let achHtml;
+            if (correctReactionTimes.length > 0) {
+                // 把玩家的平均反應時間填進文案（跟下方「平均反應」那格同一個數字）
+                const secStr = (avgReactionMs / 1000).toFixed(2);
+                achHtml =
+                    `<div class="secret-achievement">🏆 恭喜達成隱藏成就：<br>` +
+                    `<span class="ach-tag">【${secStr} 秒的超人類反射神經】</span><br>` +
+                    `還差光速一點點！</div>`;
+            } else {
+                // 一題都沒答對（極少見）就退回通用版，避免出現「— 秒」
+                achHtml =
+                    `<div class="secret-achievement">🏆 恭喜達成隱藏成就<br>` +
+                    `<span class="ach-tag">【反應速度快到突破天際】</span></div>`;
+            }
+            recordContainer.innerHTML = achHtml + recordContainer.innerHTML;
         }
 
         // 弱點題目（本局錯最多的，取前 3）
